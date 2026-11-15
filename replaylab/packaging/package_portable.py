@@ -253,6 +253,8 @@ def smoke(root, expected_version=None):
         else:
             checked.append({"RenderDocBread.exe": "native-version", "replaylab-ai.exe": "frozen-mcp-import",
                 "uex.exe": "self-contained-uex", "AssetStudioModCLI.exe": "assetstudio", "python.exe": "bundled-unity-provider-cli"}[command[0].name])
+    from verify_portable_profile import verify as verify_profiles
+    checked.append({'portableProfiles': verify_profiles(root)})
     return checked
 
 

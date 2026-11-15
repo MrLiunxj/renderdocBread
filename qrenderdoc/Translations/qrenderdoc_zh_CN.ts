@@ -8252,13 +8252,13 @@ This warning will not appear every time this happens, check debug errors/warning
     </message>
     <message>
         <location line="+23"/>
-        <location line="+2967"/>
+        <location line="+2977"/>
         <location line="+45"/>
         <source>Failed to save capture</source>
         <translation>保存捕获失败</translation>
     </message>
     <message>
-        <location line="-3011"/>
+        <location line="-3021"/>
         <source>Capture couldn&apos;t be saved from remote.</source>
         <translation>无法从远程主机保存捕获。</translation>
     </message>
@@ -8365,13 +8365,13 @@ This warning will not appear every time this happens, check debug errors/warning
     </message>
     <message>
         <location line="+90"/>
-        <location line="+2480"/>
+        <location line="+2490"/>
         <location line="+45"/>
         <source>Please wait, working...</source>
         <translation>正在处理，请稍候...</translation>
     </message>
     <message>
-        <location line="-1562"/>
+        <location line="-1563"/>
         <source>Can&apos;t save file</source>
         <translation>无法保存文件</translation>
     </message>
@@ -8450,13 +8450,13 @@ Open settings window to configure path?</source>
         <translation> （已编辑）</translation>
     </message>
     <message>
-        <location line="+1237"/>
+        <location line="+1238"/>
         <location line="+45"/>
         <source>Capture couldn&apos;t be copied from remote.</source>
         <translation>无法从远程主机复制捕获。</translation>
     </message>
     <message>
-        <location filename="../Code/qrenderdoc.cpp" line="+595"/>
+        <location filename="../Code/qrenderdoc.cpp" line="+618"/>
         <source>Error loading config</source>
         <translation>加载配置时出错</translation>
     </message>
@@ -21935,7 +21935,7 @@ Please manually run: sudo &quot;%1&quot; %2</source>
         <translation>未记录到渲染目标写入候选事件。</translation>
     </message>
     <message>
-        <location line="+200"/>
+        <location line="+202"/>
         <source>Cached %1 of %2 revisions.</source>
         <translation>已缓存 %1/%2 个版本。</translation>
     </message>
@@ -21958,7 +21958,7 @@ Single-click to preview in Texture Viewer. Double-click to jump to this EID.</so
 单击可在纹理查看器中预览；双击可跳转到此 EID。</translation>
     </message>
     <message>
-        <location line="+269"/>
+        <location line="+270"/>
         <source>Select a revision to inspect its full texture output.</source>
         <translation>选择一个版本以查看其完整纹理输出。</translation>
     </message>

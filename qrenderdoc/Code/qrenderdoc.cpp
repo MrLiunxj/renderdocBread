@@ -23,6 +23,7 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string>
 
 #if defined(RENDERDOC_PLATFORM_WIN32)
@@ -33,6 +34,7 @@
 #include <QCommandLineParser>
 #include <QDir>
 #include <QFileInfo>
+#include <QProcessEnvironment>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 #include <QStandardPaths>
@@ -368,9 +370,30 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName(lit("RenderDocBread"));    // i18n-ignore: product brand
     if(qEnvironmentVariableIsEmpty("RENDERDOC_CONFIG_DIR"))
     {
-      const QString profile = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation))
+      QString localData;
+#if defined(RENDERDOC_PLATFORM_WIN32)
+      // Preserve Unicode and honor redirected per-process profiles. Qt's known-folder lookup
+      // can otherwise resolve the account's original directory instead of LOCALAPPDATA.
+      localData = QProcessEnvironment::systemEnvironment().value(lit("LOCALAPPDATA"));    // i18n-ignore: Windows profile environment key
+#endif
+      if(localData.isEmpty())
+        localData = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+      const QString profile = QDir(localData)
                                   .filePath(lit("RenderDocBread/ui"));    // i18n-ignore: isolated portable UI profile path
-      qputenv("RENDERDOC_CONFIG_DIR", profile.toUtf8());
+      // Qt 5's qputenv uses the narrow MSVC CRT environment. UTF-8 bytes are interpreted in
+      // the system code page there, corrupting non-ASCII profile paths. The wide CRT setter
+      // preserves the native Windows environment and also synchronizes CRT presence checks.
+#if defined(RENDERDOC_PLATFORM_WIN32)
+      const bool profileSet = _wputenv_s(L"RENDERDOC_CONFIG_DIR", profile.toStdWString().c_str()) == 0;
+#else
+      const bool profileSet = qputenv("RENDERDOC_CONFIG_DIR", profile.toUtf8());
+#endif
+      if(!profileSet)
+      {
+        // i18n-ignore: Startup log diagnostic before translations/UI configuration are loaded.
+        qCritical("Cannot set the portable configuration directory; refusing user-directory fallback");
+        return 2;
+      }
     }
     QCoreApplication::setLibraryPaths(
         {QDir(QCoreApplication::applicationDirPath()).filePath(lit("qtplugins"))});    // i18n-ignore: fixed bundled Qt plugin path

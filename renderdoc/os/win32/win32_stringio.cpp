@@ -422,6 +422,39 @@ rdcstr GetHomeFolderFilename()
 
 rdcstr GetPlatformAppFolderFilename(const rdcstr &filename)
 {
+  // The replay DLL loads its configuration before the GUI reaches main(). Resolve the
+  // portable default here too, so that first load cannot read/write the ordinary profile.
+  // Explicit RENDERDOC_CONFIG_DIR overrides have already been handled by the shared wrapper.
+  if(RenderDoc::Inst().IsReplayApp())
+  {
+    rdcstr executable;
+    GetExecutableFilename(executable);
+    const rdcwstr marker =
+        StringFormat::UTF82Wide(get_dirname(executable) + "/RenderDocBread.portable");
+    const DWORD attributes = GetFileAttributesW(marker.c_str());
+    if(attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY))
+    {
+      rdcstr localData = Process::GetEnvVariable("LOCALAPPDATA");
+      if(localData.empty())
+      {
+        PWSTR localDataPath = NULL;
+        if(SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DONT_VERIFY, NULL,
+                                        &localDataPath)) &&
+           localDataPath)
+          localData = StringFormat::Wide2UTF8(localDataPath);
+        CoTaskMemFree(localDataPath);
+      }
+      if(localData.empty() || IsRelativePath(localData))
+      {
+        RDCERR("Cannot resolve the portable configuration directory; refusing user-directory fallback");
+        exit(2);
+      }
+      rdcstr ret = localData + "/RenderDocBread/ui/" + filename;
+      CreateParentDirectory(ret);
+      return ret;
+    }
+  }
+
   PWSTR appDataPath = NULL;
   HRESULT hr = SHGetKnownFolderPath(
       FOLDERID_RoamingAppData, KF_FLAG_SIMPLE_IDLIST | KF_FLAG_DONT_UNEXPAND, NULL, &appDataPath);

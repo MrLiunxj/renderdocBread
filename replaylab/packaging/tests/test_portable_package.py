@@ -87,8 +87,10 @@ def test_smoke_checks_do_not_access_the_live_user_profile(tmp_path):
     def run(command, **kwargs):
         calls.append(kwargs)
         return mock.Mock(returncode=0)
-    with mock.patch.object(package.subprocess, "run", side_effect=run):
+    with mock.patch.object(package.subprocess, "run", side_effect=run), \
+         mock.patch('verify_portable_profile.verify', return_value=[]) as profiles:
         package.smoke(application)
+    profiles.assert_called_once_with(application)
     assert len(calls) == 5  # Core does not execute optional Office/document tools.
     for call in calls:
         assert call["env"]["HOME"] == call["env"]["USERPROFILE"]

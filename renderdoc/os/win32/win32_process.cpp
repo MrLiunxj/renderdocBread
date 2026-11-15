@@ -162,16 +162,27 @@ void Process::ApplyEnvironmentModification()
 
 rdcstr Process::GetEnvVariable(const rdcstr &name)
 {
-  DWORD len = GetEnvironmentVariableA(name.c_str(), NULL, 0);
-  if(len == 0 && GetLastError() == ERROR_ENVVAR_NOT_FOUND)
-    return rdcstr();
-
-  rdcstr ret;
-  ret.resize(len + 1);
-
-  GetEnvironmentVariableA(name.c_str(), ret.data(), len);
-  ret.trim();
-  return ret;
+  const rdcwstr wideName = StringFormat::UTF82Wide(name);
+  DWORD len = GetEnvironmentVariableW(wideName.c_str(), NULL, 0);
+  while(len > 0)
+  {
+    rdcarray<wchar_t> value;
+    value.resize(len);
+    const DWORD copied = GetEnvironmentVariableW(wideName.c_str(), value.data(), len);
+    if(copied == 0)
+      break;
+    // The environment can grow between the size query and the read. Retry with the new size
+    // instead of converting truncated or uninitialized data.
+    if(copied >= len)
+    {
+      len = copied;
+      continue;
+    }
+    rdcstr ret = StringFormat::Wide2UTF8(value.data());
+    ret.trim();
+    return ret;
+  }
+  return rdcstr();
 }
 
 uint64_t Process::GetMemoryUsage()
