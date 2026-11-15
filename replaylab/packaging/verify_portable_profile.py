@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import subprocess
 import tempfile
 
 
@@ -51,17 +50,12 @@ def verify(application):
                 'CheckUpdate_AllowChecks': False, 'Tips_HasSeenFirst': True,
             }), encoding='utf-8')
             before = (expected / 'UI.config').read_bytes()
-            # File handles avoid waiting on inherited stdout pipes held by detached sidecars.
-            with (root / 'startup.log').open('wb') as log:
-                result = subprocess.run([str(application / 'RenderDocBread.exe'), '--ui-script',
-                                         str(fixture)], cwd=application, env=env,
-                                        stdout=log, stderr=log, timeout=90,
-                                        creationflags=subprocess.CREATE_NO_WINDOW)
+            from windows_profile_process import run_gui
+            code = run_gui(application / 'RenderDocBread.exe', fixture, env)
             output = root / 'result.json'
             evidence = json.loads(output.read_text(encoding='utf-8')) if output.is_file() else {}
-            if result.returncode or not evidence.get('ok'):
-                raise ValueError(f'Portable profile {name} failed (exit {result.returncode}): '
-                                 f'{evidence}\n{(root / "startup.log").read_text(errors="replace")[-2000:]}')
+            if code or not evidence.get('ok'):
+                raise ValueError(f'Portable profile {name} failed (exit {code}): {evidence}')
             if not (expected / 'UI.config').is_file():
                 raise ValueError(f'Portable profile {name} did not save UI.config on normal exit')
             if (expected / 'UI.config').read_bytes() == before:
@@ -69,7 +63,8 @@ def verify(application):
             ui_configs = list(root.rglob('UI.config'))
             core_configs = list(root.rglob('renderdoc.conf'))
             if ui_configs != [expected / 'UI.config'] or core_configs != [expected / 'renderdoc.conf']:
-                raise ValueError(f'Portable profile {name} wrote configuration outside its expected root')
+                raise ValueError(f'Portable profile {name} wrote configuration outside its expected root: '
+                                 f'UI={ui_configs}, core={core_configs}, expected={expected}')
             checks.append({'profile': name, 'explicitOverride': explicit,
                            'mainWindowVisible': True, 'uiConfigSaved': True, 'coreConfigSaved': True})
             print(f'Portable profile passed: {name}', flush=True)

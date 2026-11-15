@@ -145,7 +145,9 @@ user directories. It verifies both `UI.config` and the core's `renderdoc.conf`
 under the automatic portable profile, plus preservation of an explicit Unicode
 override. Run this gate separately with
 `python replaylab/packaging/verify_portable_profile.py --application <portable-directory>`.
-The test closes only its own GUI and removes its temporary profiles.
+The native core resolves the same portable default during DLL initialization,
+before GUI startup can set an environment override. The test uses a private
+desktop and an OS job to close its own GUI/services and remove its temporary profiles.
 
 Bread is the display brand. Existing `ReplayLab` executable names, protocol identifiers,
 build commands, and storage paths below remain unchanged for compatibility.
