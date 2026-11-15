@@ -1,0 +1,86 @@
+"""Exercise automatic portable configuration with real Windows Unicode profiles."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+
+
+def profile_environment(base, root, explicit=False):
+    env = {key: value for key, value in base.items()
+           if not key.startswith(('REPLAYLAB_', 'RENDERDOC_', 'BREAD_', 'QT_', 'PYTHON',
+                                  'CODEX_', 'SKY_', 'NODE_REPL_', 'BROWSER_USE_', 'CUA_'))
+           and key not in {'VIRTUAL_ENV', 'NODE_PATH', 'NODE_OPTIONS'}}
+    for key, relative in {'USERPROFILE': 'user', 'LOCALAPPDATA': 'user/AppData/Local',
+                          'APPDATA': 'user/AppData/Roaming'}.items():
+        path = root / relative
+        path.mkdir(parents=True, exist_ok=True)
+        env[key] = str(path)
+    env['HOME'] = env['USERPROFILE']
+    env['PATH'] = str(Path(base.get('SystemRoot', 'C:/Windows')) / 'System32')
+    expected = (root / 'explicit-配置-😀') if explicit else (
+        Path(env['LOCALAPPDATA']) / 'RenderDocBread/ui')
+    if explicit:
+        env['RENDERDOC_CONFIG_DIR'] = str(expected)
+    env['BREAD_PROFILE_SMOKE_EXPECTED'] = str(expected)
+    env['BREAD_PROFILE_SMOKE_OUTPUT'] = str(root / 'result.json')
+    return env, expected
+
+
+def verify(application):
+    if os.name != 'nt':
+        raise RuntimeError('Portable Unicode profile validation requires Windows')
+    application = Path(application).resolve()
+    if not (application / 'RenderDocBread.portable').is_file():
+        raise ValueError('Profile validation requires the actual portable package marker')
+    fixture = Path(__file__).parent / 'tests/fixtures/portable_profile.py'
+    checks = []
+    with tempfile.TemporaryDirectory(prefix='Bread-profile-') as temporary:
+        for name, explicit in [('ascii', False), ('中文用户', False),
+                               ('unicode-😀-𠮷', False), ('explicit-override', True)]:
+            root = Path(temporary) / name
+            env, expected = profile_environment(os.environ, root, explicit)
+            # Opt this disposable profile out of the interactive first-run analytics prompt.
+            # No existing user preference or configuration is copied into it.
+            expected.mkdir(parents=True, exist_ok=True)
+            (expected / 'UI.config').write_text(json.dumps({
+                'rdocConfigData': 1, 'Analytics_TotalOptOut': True,
+                'CheckUpdate_AllowChecks': False, 'Tips_HasSeenFirst': True,
+            }), encoding='utf-8')
+            before = (expected / 'UI.config').read_bytes()
+            # File handles avoid waiting on inherited stdout pipes held by detached sidecars.
+            with (root / 'startup.log').open('wb') as log:
+                result = subprocess.run([str(application / 'RenderDocBread.exe'), '--ui-script',
+                                         str(fixture)], cwd=application, env=env,
+                                        stdout=log, stderr=log, timeout=90,
+                                        creationflags=subprocess.CREATE_NO_WINDOW)
+            output = root / 'result.json'
+            evidence = json.loads(output.read_text(encoding='utf-8')) if output.is_file() else {}
+            if result.returncode or not evidence.get('ok'):
+                raise ValueError(f'Portable profile {name} failed (exit {result.returncode}): '
+                                 f'{evidence}\n{(root / "startup.log").read_text(errors="replace")[-2000:]}')
+            if not (expected / 'UI.config').is_file():
+                raise ValueError(f'Portable profile {name} did not save UI.config on normal exit')
+            if (expected / 'UI.config').read_bytes() == before:
+                raise ValueError(f'Portable profile {name} did not update its initial UI settings')
+            ui_configs = list(root.rglob('UI.config'))
+            core_configs = list(root.rglob('renderdoc.conf'))
+            if ui_configs != [expected / 'UI.config'] or core_configs != [expected / 'renderdoc.conf']:
+                raise ValueError(f'Portable profile {name} wrote configuration outside its expected root')
+            checks.append({'profile': name, 'explicitOverride': explicit,
+                           'mainWindowVisible': True, 'uiConfigSaved': True, 'coreConfigSaved': True})
+            print(f'Portable profile passed: {name}', flush=True)
+    return checks
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--application', type=Path, required=True)
+    parser.add_argument('--output', type=Path)
+    args = parser.parse_args()
+    result = {'ok': True, 'checks': verify(args.application)}
+    if args.output:
+        args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')

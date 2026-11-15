@@ -391,6 +391,32 @@ TEST_CASE("Test OS-specific functions", "[osspecific]")
     CHECK(var == rdcstr("reset"));
   };
 
+  SECTION("Unicode environment variables")
+  {
+    EnvironmentModification mod;
+    mod.name = "__renderdoc__unicode_test_\xe6\xb5\x8b\xe8\xaf\x95";
+    mod.mod = EnvMod::Set;
+    mod.sep = EnvSep::NoSep;
+    // Chinese plus supplementary Unicode characters, including values outside Windows ACP 936.
+    const rdcstr unicode = "\xe6\xb5\x8b\xe8\xaf\x95\xf0\x9f\x98\x80\xf0\xa0\xae\xb7";
+    mod.value = "C:/Users/" + unicode + "/AppData/Local/RenderDocBread/ui";
+    Process::RegisterEnvironmentModification(mod);
+    Process::ApplyEnvironmentModification();
+    CHECK(Process::GetEnvVariable(mod.name) == mod.value);
+
+    // Exercise the dynamic size query as well as UTF-16/UTF-8 conversion.
+    for(int i = 0; i < 1000; ++i)
+      mod.value += unicode;
+    Process::RegisterEnvironmentModification(mod);
+    Process::ApplyEnvironmentModification();
+    CHECK(Process::GetEnvVariable(mod.name) == mod.value);
+
+    mod.value = "";
+    Process::RegisterEnvironmentModification(mod);
+    Process::ApplyEnvironmentModification();
+    CHECK(Process::GetEnvVariable(mod.name).empty());
+  }
+
   SECTION("UTF-8 to wide conversion")
   {
     const rdcstr s = "ελληνικά";

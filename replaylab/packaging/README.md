@@ -139,6 +139,14 @@ DXC capabilities, navigation-server integrity and path/privacy scans. Windows 10
 Windows 11 x64 are the release targets; real GPU replay/capture and clean-machine testing
 on both systems remain separate validation, not a claim made by the packaging script.
 
+The release smoke also opens the real main window without a pre-set
+`RENDERDOC_CONFIG_DIR`, using isolated ASCII, Chinese and supplementary-Unicode
+user directories. It verifies both `UI.config` and the core's `renderdoc.conf`
+under the automatic portable profile, plus preservation of an explicit Unicode
+override. Run this gate separately with
+`python replaylab/packaging/verify_portable_profile.py --application <portable-directory>`.
+The test closes only its own GUI and removes its temporary profiles.
+
 Bread is the display brand. Existing `ReplayLab` executable names, protocol identifiers,
 build commands, and storage paths below remain unchanged for compatibility.
 
