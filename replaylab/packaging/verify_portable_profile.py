@@ -67,7 +67,7 @@ def verify(application):
                                  f'UI={ui_configs}, core={core_configs}, expected={expected}')
             checks.append({'profile': name, 'explicitOverride': explicit,
                            'mainWindowVisible': True, 'uiConfigSaved': True, 'coreConfigSaved': True})
-            print(f'Portable profile passed: {name}', flush=True)
+            print(f'Portable profile passed: {ascii(name)}', flush=True)
     return checks
 
 
